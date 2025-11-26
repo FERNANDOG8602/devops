@@ -1,72 +1,37 @@
 pipeline {
     agent any
-
-    parameters {
-        string(
-            name: 'APP_VERSION',
-            defaultValue: 'lat est',
-            description: 'Versión/tag de la imagen Docker'
-        )
-        booleanParam(
-            name: 'DO_BUILD',
-            defaultValue: true,
-            description: '¿Construir la imagen Docker?'
-        )
-        booleanParam(
-            name: 'DO_PUSH',
-            defaultValue: true,
-            description: '¿Hacer push a DockerHub?'
-        )
-    }
-
-    environment {
-        DOCKERHUB_USER = 'tuUsuarioDockerHub'
-        IMAGE_NAME     = 'ceste-demo-app'
-    }
+    options { timestamps() }
 
     stages {
-
         stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build') {
             steps {
-                checkout scm
+                bat 'echo Compilando...'
+                bat 'dir'
             }
         }
-
-        stage('Tests / Scripts') {
+        stage('Test') {
             steps {
-                bat """
-                    echo Ejecutando tests de ejemplo...
-                    echo Tests OK
-                """
+                // Simulamos tests
+                bat 'echo Ejecutando tests... & exit /b 0'
             }
         }
-
-        stage('Build Docker') {
-            when {
-                expression { params.DO_BUILD }
-            }
+        stage('Run script') {
             steps {
-                bat """
-                    echo Construyendo imagen Docker...
-                    docker build -t ${env.DOCKERHUB_USER}/${env.IMAGE_NAME}:${params.APP_VERSION} .
-                """
+                bat 'call scripts\\hola.bat'
             }
         }
-
-        stage('Push DockerHub') {
-            when {
-                allOf {
-                    expression { params.DO_PUSH }
-                    expression { params.DO_BUILD }
-                    branch 'main'
-                }
-            }
+        stage('Archive') {
             steps {
-                bat """
-                    echo Subiendo imagen a DockerHub...
-                    docker push ${env.DOCKERHUB_USER}/${env.IMAGE_NAME}:${params.APP_VERSION}
-                """
+                archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.txt", fingerprint: true
             }
         }
     }
+    post {
+        success { echo '✅ Todo OK' }
+        failure { echo '❌ Algo falló' }
+    }
 }
+
